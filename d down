@@ -1,0 +1,81 @@
+// ==UserScript==
+// @name        Direct links out of Discord
+// @description Removes Discord's "You are leaving this site" prompt before redirecting 
+// @namespace   https://github.com/smilingfaces
+// @author      smilingfaces
+// @icon
+// @update      /https://github.com/nokeya/direct-links-out/raw/master/direct-links-out.user.js/
+// @version     1.0
+// @grant       none
+//Discord
+// @include     *://discord.com*
+// @include     *://.discord.com*
+
+// ==/UserScript==
+(function() {
+    // anchors and functions
+    var anchor;
+    var after;
+    var rwLink = function(){};
+    var rwAll = function(){};
+    var retTrue = function() { return true; }; //dummy function to always return true
+
+    // simple rewrite link -  based on anchors
+    function rwSimple(link){
+        if (anchor){
+            var ndx = link.href.indexOf(anchor);
+            if (ndx != -1){
+                var newlink = link.href.substring(ndx + anchor.length);
+                if (after){
+                    ndx = newlink.indexOf(after);
+                    if (ndx != -1)
+                        newlink = newlink.substring(0, ndx);
+                }
+                link.href = unescape(newlink);
+            }
+        }
+    }
+    function rwaSimple(){
+        var links = document.getElementsByTagName('a');
+        for (var i = 0; i < links.length; ++i)
+            rwLink(links[i]);
+    }
+    // slack
+    function rwSlack(link){
+        link.removeAttribute('onclick');
+        link.removeAttribute('onmouseover');
+    }
+
+    // determine anchors, functions and listeners
+    (function ()
+    {
+        rwLink = rwSimple;
+        rwAll = rwaSimple;
+
+        var loc = window.location.hostname;
+        if (/google/i.test(loc))
+            rwLink = rwGoogle;
+        else if (/youtube/i.test(loc)){
+            anchor = 'redirect?q=';
+            after = '&redir_token=';
+            rwLink = rwYoutube;
+        }
+        else if (/facebook/i.test(loc)){
+            anchor = 'u=';
+            after = '&h=';
+            rwLink = rwFacebook;
+        }
+
+        document.addEventListener('DOMNodeInserted', function(event){
+            if (!event || !event.target || !(event.target instanceof HTMLElement))
+                return;
+            var node = event.target;
+            if (node instanceof HTMLAnchorElement)
+                rwLink(node);
+            var links = node.getElementsByTagName('a');
+            for (var i = 0; i < links.length; ++i)
+                rwLink(links[i]);
+        }, false);
+    })();
+    rwAll();
+})();
